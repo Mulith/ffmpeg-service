@@ -21,11 +21,11 @@ const downloadImage = async (url, filepath) => {
     });
 };
 
-app.post('/create-video', upload.single('audio'), async (req, res) => {
-    const audio = req.file;
-    const { title, parallax, imageUrls, durations } = req.body;
+app.post('/create-video', upload.any(), async (req, res) => {
+    const audioFile = req.files.find(f => f.fieldname === 'audioFile');
+    const { title, parallax, imageUrls, durations, resolution, fps } = req.body;
 
-    if (!audio || !imageUrls) {
+    if (!audioFile || !imageUrls) {
         return res.status(400).send('Missing audio file or image URLs.');
     }
 
@@ -34,14 +34,13 @@ app.post('/create-video', upload.single('audio'), async (req, res) => {
         fs.mkdirSync(tempDir);
     }
 
-    const parsedImageUrls = JSON.parse(imageUrls);
     const imagePaths = [];
-    const audioPath = audio.path;
+    const audioPath = audioFile.path;
     const outputPath = path.join(tempDir, `video-${Date.now()}.mp4`);
 
     try {
-        for (let i = 0; i < parsedImageUrls.length; i++) {
-            const imageUrl = parsedImageUrls[i];
+        for (let i = 0; i < imageUrls.length; i++) {
+            const imageUrl = imageUrls[i];
             const imagePath = path.join(tempDir, `image-${i}.jpg`);
             await downloadImage(imageUrl, imagePath);
             imagePaths.push(imagePath);
@@ -54,12 +53,11 @@ app.post('/create-video', upload.single('audio'), async (req, res) => {
     const command = ffmpeg();
 
     if (parallax === 'true') {
-        const parsedDurations = durations ? JSON.parse(durations) : imagePaths.map(() => 3);
         const zoomSpeed = 0.3;
 
         const complexFilter = imagePaths.map((p, i) => {
-            const duration = parsedDurations[i] || 3;
-            return `[${i}:v]scale=1920x1080,zoompan=z='min(zoom+${zoomSpeed},1.5)':d=${duration*25}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=hd1080[v${i}]`;
+            const duration = durations[i] || 3;
+            return `[${i}:v]scale=${resolution || '1920x1080'},zoompan=z='min(zoom+${zoomSpeed},1.5)':d=${duration*25}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${resolution || 'hd1080'}[v${i}]`;
         }).join(';');
 
         const concatFilter = imagePaths.map((p, i) => `[v${i}]`).join('') + `concat=n=${imagePaths.length}:v=1:a=0[v]`;
@@ -71,9 +69,8 @@ app.post('/create-video', upload.single('audio'), async (req, res) => {
             .outputOptions(['-map [v]', '-map 1:a']);
 
     } else {
-        const parsedDurations = durations ? JSON.parse(durations) : imagePaths.map(() => 3);
         imagePaths.forEach((imagePath, i) => {
-            const duration = parsedDurations[i] || 3;
+            const duration = durations[i] || 3;
             command.input(imagePath).inputOptions(['-loop 1', `-t ${duration}`]);
         });
         command.input(audioPath);
@@ -83,7 +80,9 @@ app.post('/create-video', upload.single('audio'), async (req, res) => {
             '-c:v libx264',
             '-c:a aac',
             '-pix_fmt yuv420p',
-            '-shortest'
+            '-shortest',
+            `-r ${fps || 30}`,
+            `-s ${resolution || '1080x1920'}`
         ])
         .on('end', () => {
             res.download(outputPath, (err) => {
