@@ -23,7 +23,7 @@ const downloadImage = async (url, filepath) => {
 
 app.post('/create-video', upload.single('audio'), async (req, res) => {
     const audio = req.file;
-    const { title, parallax, imageUrls } = req.body;
+    const { title, parallax, imageUrls, durations } = req.body;
 
     if (!audio || !imageUrls) {
         return res.status(400).send('Missing audio file or image URLs.');
@@ -54,11 +54,12 @@ app.post('/create-video', upload.single('audio'), async (req, res) => {
     const command = ffmpeg();
 
     if (parallax === 'true') {
-        const videoDuration = 3; // seconds per image
-        const zoomSpeed = 0.1;
+        const parsedDurations = durations ? JSON.parse(durations) : imagePaths.map(() => 3);
+        const zoomSpeed = 0.3;
 
         const complexFilter = imagePaths.map((p, i) => {
-            return `[${i}:v]scale=1920x1080,zoompan=z='min(zoom+${zoomSpeed},1.5)':d=${videoDuration*25}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=hd1080[v${i}]`;
+            const duration = parsedDurations[i] || 3;
+            return `[${i}:v]scale=1920x1080,zoompan=z='min(zoom+${zoomSpeed},1.5)':d=${duration*25}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=hd1080[v${i}]`;
         }).join(';');
 
         const concatFilter = imagePaths.map((p, i) => `[v${i}]`).join('') + `concat=n=${imagePaths.length}:v=1:a=0[v]`;
@@ -66,11 +67,14 @@ app.post('/create-video', upload.single('audio'), async (req, res) => {
         imagePaths.forEach(p => command.input(p));
         
         command.input(audioPath)
-            .complexFilter(complexFilter + ';' + concatFilter, ['v']);
+            .complexFilter(complexFilter + ';' + concatFilter)
+            .outputOptions(['-map [v]', '-map 1:a']);
 
     } else {
-        imagePaths.forEach(imagePath => {
-            command.input(imagePath).inputOptions(['-loop 1', '-t 3']);
+        const parsedDurations = durations ? JSON.parse(durations) : imagePaths.map(() => 3);
+        imagePaths.forEach((imagePath, i) => {
+            const duration = parsedDurations[i] || 3;
+            command.input(imagePath).inputOptions(['-loop 1', `-t ${duration}`]);
         });
         command.input(audioPath);
     }
