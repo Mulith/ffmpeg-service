@@ -25,9 +25,22 @@ const downloadImage = async (url, filepath) => {
 
 app.post('/create-video', upload.any(), async (req, res) => {
     const audioFile = req.files.find(f => f.fieldname === 'audioFile');
-    const { title, parallax, imageUrls, durations, resolution, fps } = req.body;
+    const { title, parallax, resolution, fps } = req.body;
 
-    if (!audioFile || !imageUrls) {
+    const imageUrls = [];
+    const durations = [];
+
+    for (const key in req.body) {
+        if (key.startsWith('imageUrls[')) {
+            const index = parseInt(key.substring(10, key.length - 1));
+            imageUrls[index] = req.body[key];
+        } else if (key.startsWith('durations[')) {
+            const index = parseInt(key.substring(10, key.length - 1));
+            durations[index] = req.body[key];
+        }
+    }
+
+    if (!audioFile || imageUrls.length === 0) {
         return res.status(400).send('Missing audio file or image URLs.');
     }
 
