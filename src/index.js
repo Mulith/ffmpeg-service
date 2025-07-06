@@ -24,6 +24,11 @@ const downloadImage = async (url, filepath) => {
 };
 
 app.post('/create-video', upload.any(), async (req, res) => {
+    console.log('Received request for /create-video');
+    console.log('Headers:', req.headers);
+    console.log('Body:', req.body);
+    console.log('Files:', req.files);
+
     const audioFile = req.files.find(f => f.fieldname === 'audioFile');
     const { title, parallax, resolution, fps } = req.body;
 
@@ -40,7 +45,11 @@ app.post('/create-video', upload.any(), async (req, res) => {
         }
     }
 
+    console.log('Parsed Image URLs:', imageUrls);
+    console.log('Parsed Durations:', durations);
+
     if (!audioFile || imageUrls.length === 0) {
+        console.error('Validation failed: Missing audio file or image URLs.');
         return res.status(400).send('Missing audio file or image URLs.');
     }
 
