@@ -29,7 +29,7 @@ app.post('/create-video', upload.any(), async (req, res) => {
     console.log('Body:', req.body);
     console.log('Files:', req.files);
 
-    const audioFile = req.files.find(f => f.fieldname === 'audioFile');
+    const audioFile = req.files.find(f => f.fieldname === 'audio');
     const { title, parallax, resolution, fps } = req.body;
 
     const imageUrls = [];
