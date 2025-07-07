@@ -1,5 +1,4 @@
 const express = require('express');
-const multer = require('multer');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -8,7 +7,7 @@ const path = require('path');
 const axios = require('axios');
 
 const app = express();
-const upload = multer({ dest: 'uploads/' });
+app.use(express.json({ limit: '50mb' }));
 
 const downloadImage = async (url, filepath) => {
     const response = await axios({
@@ -23,26 +22,11 @@ const downloadImage = async (url, filepath) => {
     });
 };
 
-app.post('/create-video', upload.any(), async (req, res) => {
-    console.log('Received request for /create-video');
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
-    console.log('Files:', req.files);
+app.post('/create-video', async (req, res) => {
+    const { title, parallax, imageUrls, durations, resolution, fps, audioBase64 } = req.body;
 
-    const audioFile = req.files.find(f => f.fieldname === 'audio');
-    const { title, parallax, resolution, fps } = req.body;
-
-    const { imageUrls: imageUrlsString, durations: durationsString } = req.body;
-
-    const imageUrls = JSON.parse(imageUrlsString);
-    const durations = JSON.parse(durationsString);
-
-    console.log('Parsed Image URLs:', imageUrls);
-    console.log('Parsed Durations:', durations);
-
-    if (!audioFile || imageUrls.length === 0) {
-        console.error('Validation failed: Missing audio file or image URLs.');
-        return res.status(400).send('Missing audio file or image URLs.');
+    if (!audioBase64 || !imageUrls || imageUrls.length === 0) {
+        return res.status(400).send('Missing audio data or image URLs.');
     }
 
     const tempDir = path.join(__dirname, '..', 'temp');
@@ -50,8 +34,11 @@ app.post('/create-video', upload.any(), async (req, res) => {
         fs.mkdirSync(tempDir);
     }
 
+    const audioPath = path.join(tempDir, `audio-${Date.now()}.mp3`);
+    const audioData = Buffer.from(audioBase64, 'base64');
+    fs.writeFileSync(audioPath, audioData);
+
     const imagePaths = [];
-    const audioPath = audioFile.path;
     const outputPath = path.join(tempDir, `video-${Date.now()}.mp4`);
 
     try {
@@ -70,20 +57,15 @@ app.post('/create-video', upload.any(), async (req, res) => {
 
     if (parallax === 'true') {
         const zoomSpeed = 0.3;
-
         const complexFilter = imagePaths.map((p, i) => {
             const duration = durations[i] || 3;
             return `[${i}:v]scale=${resolution || '1920x1080'},zoompan=z='min(zoom+${zoomSpeed},1.5)':d=${duration*25}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${resolution || 'hd1080'}[v${i}]`;
         }).join(';');
-
         const concatFilter = imagePaths.map((p, i) => `[v${i}]`).join('') + `concat=n=${imagePaths.length}:v=1:a=0[v]`;
-
         imagePaths.forEach(p => command.input(p));
-        
         command.input(audioPath)
             .complexFilter(complexFilter + ';' + concatFilter)
             .outputOptions(['-map [v]', '-map 1:a']);
-
     } else {
         imagePaths.forEach((imagePath, i) => {
             const duration = durations[i] || 3;
