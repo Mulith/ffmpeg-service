@@ -32,18 +32,10 @@ app.post('/create-video', upload.any(), async (req, res) => {
     const audioFile = req.files.find(f => f.fieldname === 'audio');
     const { title, parallax, resolution, fps } = req.body;
 
-    const imageUrls = [];
-    const durations = [];
+    const { imageUrls: imageUrlsString, durations: durationsString } = req.body;
 
-    for (const key in req.body) {
-        if (key.startsWith('imageUrls[')) {
-            const index = parseInt(key.substring(10, key.length - 1));
-            imageUrls[index] = req.body[key];
-        } else if (key.startsWith('durations[')) {
-            const index = parseInt(key.substring(10, key.length - 1));
-            durations[index] = req.body[key];
-        }
-    }
+    const imageUrls = JSON.parse(imageUrlsString);
+    const durations = JSON.parse(durationsString);
 
     console.log('Parsed Image URLs:', imageUrls);
     console.log('Parsed Durations:', durations);
