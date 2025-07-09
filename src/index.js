@@ -23,7 +23,7 @@ const downloadImage = async (url, filepath) => {
 };
 
 app.post('/create-video', async (req, res) => {
-    const { title, parallax, imageUrls, durations, resolution, fps, audioBase64 } = req.body;
+    const { title, parallax, imageUrls, durations, resolution, fps, audioBase64, audioType } = req.body;
 
     if (!audioBase64 || !imageUrls || imageUrls.length === 0) {
         return res.status(400).send('Missing audio data or image URLs.');
@@ -34,7 +34,8 @@ app.post('/create-video', async (req, res) => {
         fs.mkdirSync(tempDir);
     }
 
-    const audioPath = path.join(tempDir, `audio-${Date.now()}.mp3`);
+    const audioExtension = audioType || 'mp3';
+    const audioPath = path.join(tempDir, `audio-${Date.now()}.${audioExtension}`);
     const audioData = Buffer.from(audioBase64, 'base64');
     fs.writeFileSync(audioPath, audioData);
 

@@ -7,13 +7,14 @@ The core functionality of the service is implemented and operational.
 -   **Video Creation Endpoint**: The `POST /create-video` endpoint successfully generates an MP4 video.
 -   **Image and Audio Sources**: The service can correctly process:
     -   Images provided as a list of URLs.
-    -   Audio provided as a Base64-encoded string.
+    -   Audio provided as a Base64-encoded string, with support for different audio types via the `audioType` parameter (e.g., 'mp3', 'wav').
 -   **Dynamic Parameters**: The following parameters are functional:
     -   `imageUrls`: A list of URLs for the slideshow images.
     -   `durations`: An array specifying the display time for each image.
     -   `resolution`: Sets the output video's resolution (e.g., '1080x1920').
     -   `fps`: Sets the output video's frame rate.
     -   `audioBase64`: The audio track for the video.
+    -   `audioType`: The type of the audio file (e.g., 'mp3', 'wav').
 -   **Parallax Effect**: The `parallax: 'true'` parameter correctly applies a Ken Burns (pan and zoom) effect to the images.
 -   **Error Handling**: Basic error handling is in place for missing inputs and FFmpeg processing errors.
 -   **Cleanup**: The service correctly cleans up all temporary files after each request, whether it succeeds or fails.
