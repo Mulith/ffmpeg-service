@@ -15,13 +15,14 @@ This service solves these problems by wrapping FFmpeg in a simple, easy-to-use R
 
 ### How It Should Work
 
-A user interacts with the service by sending a `POST` request to an endpoint (e.g., `/create-video`). The body of this request is a JSON object containing all the necessary data and parameters for the video creation job.
+A user interacts with the service by sending a `POST` request with a `multipart/form-data` payload to an endpoint (e.g., `/create-video`).
 
 **Example Workflow: Creating a Slideshow Video**
 
-1.  The user's application collects a series of image URLs and an audio file (as a Base64 encoded string).
+1.  The user's application collects a series of image URLs and an audio file.
 2.  It also defines parameters like the desired output `resolution`, `fps`, and the `duration` each image should be displayed.
-3.  It sends a single `POST` request to the `/create-video` endpoint with all this information.
+3.  It constructs a `FormData` object, appending the image URLs, durations, the audio file (as a Blob), and other parameters.
+4.  It sends a single `POST` request to the `/create-video` endpoint with the `FormData` payload.
 4.  The service downloads the images and decodes the audio.
 5.  It constructs and executes the appropriate FFmpeg command based on the user's parameters.
 6.  Once the video is generated, the service streams the resulting MP4 file back to the user in the HTTP response.
